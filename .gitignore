@@ -1,37 +1,69 @@
-# Byte-compiled / optimized / DLL files
+# ============================================================
+# .gitignore — UAV-CV-Navigator
+# ============================================================
+
+# ── Python ───────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
 *$py.class
+*.egg-info/
+dist/
+build/
 
-# Virtual environments
+# ── Виртуальные окружения ────────────────────────────────────
 .env
 .venv
 env/
 venv/
+conda-env/
 
-# Deep Learning weights and artifacts
+# ── Модели и веса (тяжёлые бинарные файлы) ──────────────────
+# Все веса хранятся в models/ и НЕ коммитятся.
+# Для воспроизводимости: скачайте их скриптом или экспортируйте.
+models/*.pt
+models/*.pth
+models/*.onnx
+models/*.rknn
+models/*.engine
+models/*.tflite
+
+# Устаревшие веса в корне (на случай если забыли перенести)
 *.pt
 *.pth
 *.onnx
+*.rknn
 *.engine
 *.tflite
+
+# ── Ultralytics / W&B артефакты ──────────────────────────────
 runs/
 wandb/
 
-# Data (Ignore all content in data/ except specific scripts or explicitly added files)
+# ── Данные ───────────────────────────────────────────────────
+# Игнорируем всё в data/, кроме скриптов загрузки и README
 data/*
 !data/download_test_video.py
-!data/test_runway.mp4
 !data/README.md
 
-# Logs & Telemetry Metrics
+# ── Выходные файлы пайплайна ─────────────────────────────────
+data/output/
+
+# ── Логи и телеметрия ────────────────────────────────────────
 *.log
 *.jsonl
-*.csv
-output/*
-!output/.keep
 
-# IDEs
+# ── IDE и редакторы ──────────────────────────────────────────
 .idea/
 .vscode/
 *.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ── Jupyter / Colab ──────────────────────────────────────────
+.ipynb_checkpoints/
+
+# ── Временные и scratch-файлы ────────────────────────────────
+scratch_test.py
+tmp/
