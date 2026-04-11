@@ -58,7 +58,8 @@ python src/pipeline.py --video data/test_runway.mp4 --config configs/default.yam
 ```
 
 ### Дополнительные режимы сценария:
-- **Веб-камера / USB кастера:** Передайте `0` вместо пути. `python src/pipeline.py --video 0`
+- **Выбор собственной модели на лету:** Передайте путь к вашим `.pt` весам без редактирования YAML: `python src/pipeline.py --weights mnv4_yolo11s.pt`
+- **Веб-камера / USB кастера:** Передайте `0` вместо пути: `python src/pipeline.py --video 0`
 - **RTSP Поток с дрона:** `python src/pipeline.py --video "rtsp://192.168.1.100:554/stream"`
 - **Переназначение трекера на лету:** `--tracker botsort` (отлично компенсирует тряску камеры встроенным оптическим потоком GMC).
 

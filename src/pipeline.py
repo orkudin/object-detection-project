@@ -25,6 +25,11 @@ def run(args):
     if args.tracker:
         config['tracker']['algorithm'] = args.tracker
         sys_logger.info(f"Алгоритм трекера переопределен пользователем: {args.tracker}")
+        
+    # Переопределение весов модели, если задано
+    if args.weights:
+        config['detector']['weights_path'] = args.weights
+        sys_logger.info(f"Веса детектора переопределены пользователем: {args.weights}")
     
     os.makedirs(os.path.dirname(args.output_video), exist_ok=True)
     # Формат телеметрии берется из конфига
@@ -116,6 +121,77 @@ def run(args):
     sys_logger.info(f"Телеметрия записана в {telemetry_path}")
 
 
+def run_pipeline_yield(video_source, config_overrides=None):
+    """
+    Генераторная версия конвейера для интеграции с Gradio Web UI.
+    Возвращает обработанные кадры в формате RGB вместо показа в cv2.imshow().
+    """
+    # Поддержка вызова из разных директорий
+    import os
+    cfg_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'configs', 'default.yaml')
+    config = load_config(cfg_path)
+    if config_overrides:
+        if "weights" in config_overrides: config['detector']['weights_path'] = config_overrides['weights']
+        if "tracker" in config_overrides: config['tracker']['algorithm'] = config_overrides['tracker']
+        if "conf" in config_overrides: config['detector']['confidence_threshold'] = config_overrides['conf']
+        if "grid_step" in config_overrides: config['planner']['grid_step_meters'] = config_overrides['grid_step']
+
+    sys_logger = get_system_logger()
+    sys_logger.info(f"Запуск Web UI конвейера. Источник: {video_source}")
+    
+    # Чтобы избежать OOM при переключении моделей веб-интерфейсом, 
+    # мы всегда создаем новые инстансы
+    detector = UAVDetector(config['detector'], sys_logger)
+    tracker_cfg = UAVTrackerConfig(config['tracker'], sys_logger)
+    planner = UAVPlanner(config['planner'], sys_logger)
+    visualizer = Visualizer(sys_logger)
+    
+    # Обработка источников
+    src = int(video_source) if str(video_source).isdigit() else video_source
+    cap = cv2.VideoCapture(src)
+    
+    if not cap.isOpened():
+        sys_logger.error("Не удалось прочитать видео поток в Web UI.")
+        return
+        
+    width  = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+    frame_id = 0
+    
+    while cap.isOpened():
+        ret, frame = cap.read()
+        if not ret:
+            break
+            
+        start_time = time.time()
+        results = detector.track_frame(frame, tracker_cfg.get_config_path())
+        
+        tracks_data = []
+        if results and len(results) > 0 and results[0].boxes.id is not None:
+            boxes = results[0].boxes.xywh.cpu().numpy()
+            ids = results[0].boxes.id.int().cpu().numpy()
+            cls = results[0].boxes.cls.int().cpu().numpy()
+            for b, t_id, c_id in zip(boxes, ids, cls):
+                if detector.classes is None or int(c_id) in detector.classes:
+                    tracks_data.append({"track_id": int(t_id), "class_id": int(c_id), "bbox": b.tolist()})
+                    
+        planner.update_state(tracks_data, width, height)
+        process_fps = 1.0 / (time.time() - start_time + 1e-6)
+        
+        disp_frame = visualizer.draw(frame, tracks_data, planner.get_current_waypoint(), planner.get_next_waypoint(), process_fps, planner)
+        
+        frame_id += 1
+        if frame_id % int(max(1, fps)) == 0:
+            planner.current_wp_idx += 1
+            
+        # Gradio Image component expects RGB numpy arrays
+        yield cv2.cvtColor(disp_frame, cv2.COLOR_BGR2RGB)
+        
+    tracker_cfg.cleanup()
+    cap.release()
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Авиационный конвейер детекции БПЛА")
     parser.add_argument("--video", type=str, default="data/test_video_2.mp4", help="Путь к видео")
@@ -123,6 +199,7 @@ if __name__ == "__main__":
     parser.add_argument("--output_video", type=str, default="data/output/result.mp4", help="Путь сохранения результата")
     parser.add_argument("--mode", type=str, default="full", help="Режим (full)")
     parser.add_argument("--tracker", type=str, default=None, choices=["bytetrack", "botsort"], help="Переопределить алгоритм трекера (по умолчанию из конфига)")
+    parser.add_argument("--weights", type=str, default=None, help="Переопределить путь к весам модели (по умолчанию из конфига)")
     parser.add_argument("--headless", action="store_true", help="Обязательно для серверов/Colab: отключить показ окон")
     
     args = parser.parse_args()
