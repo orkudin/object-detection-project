@@ -51,45 +51,45 @@ def create_ui():
     with gr.Blocks(theme=theme, title="БПЛА-Навигатор: Панель Оператора") as app:
         gr.Markdown(
             """
-            # 🦅 UAV-CV-Navigator: Панель Оператора
-            **Индустриальный конвейер обнаружения, отслеживания объектов и адаптивного перестроения маршрута.**
-            > Выберите источник видео (файл или RTSP-камеру), настройте гиперпараметры модели и нажмите кнопку запуска.
+            # UAV-CV-Navigator  |  Панель оператора
+            Конвейер обнаружения, отслеживания объектов и адаптивного планирования маршрута БПЛА.  
+            Выберите источник видео, настройте параметры модели и запустите обработку.
             """
         )
         
         with gr.Row():
             with gr.Column(scale=1):
-                gr.Markdown("### ⚙️ Конфигурация Пайплайна")
+                gr.Markdown("### Конфигурация")
                 
-                with gr.Tab("📁 Локальное видео"):
-                    video_input = gr.Video(label="Загрузите MP4/AVI", sources=["upload"])
-                with gr.Tab("📡 RTSP IP Камера"):
-                    stream_input = gr.Textbox(label="RTSP URL (Например: rtsp://10.0.0.1:554/stream)", placeholder="Оставьте пустым, если используете другой источник")
-                with gr.Tab("📷 USB Камера"):
-                    webcam_cb = gr.Checkbox(label="Использовать системную веб-камеру (Устройство 0)")
+                with gr.Tab("Локальное видео"):
+                    video_input = gr.Video(label="Загрузите MP4 / AVI", sources=["upload"])
+                with gr.Tab("RTSP / IP-камера"):
+                    stream_input = gr.Textbox(label="RTSP URL", placeholder="rtsp://10.0.0.1:554/stream")
+                with gr.Tab("USB-камера"):
+                    webcam_cb = gr.Checkbox(label="Использовать системную веб-камеру (устройство 0)")
                 
                 available_models = get_available_models()
                 model_dd = gr.Dropdown(
                     choices=available_models, 
                     value=available_models[0] if available_models else None,
-                    label="🧠 Модель Детектора (PyTorch/ONNX/RKNN)"
+                    label="Модель детектора"
                 )
                 
                 tracker_dd = gr.Dropdown(
                     choices=["bytetrack", "botsort"], 
                     value="bytetrack", 
-                    label="🎯 Алгоритм Трекинга"
+                    label="Алгоритм трекинга"
                 )
                 
-                conf_slider = gr.Slider(minimum=0.1, maximum=0.9, value=0.35, step=0.05, label="🔥 Confidence Threshold")
-                grid_slider = gr.Slider(minimum=5, maximum=50, value=10, step=1, label="🗺️ Шаг Сетки Навигатора (метры)")
+                conf_slider = gr.Slider(minimum=0.1, maximum=0.9, value=0.35, step=0.05, label="Порог уверенности (Confidence)")
+                grid_slider = gr.Slider(minimum=5, maximum=50, value=10, step=1, label="Шаг сетки навигатора, м")
                 
                 with gr.Row():
-                    run_btn = gr.Button("🚀 ЗАПУСТИТЬ ПАТРУЛИРОВАНИЕ", variant="primary", scale=2)
-                    stop_btn = gr.Button("🛑 СТОП", variant="stop", scale=1)
+                    run_btn = gr.Button("Запуск", variant="primary", scale=2)
+                    stop_btn = gr.Button("Стоп", variant="stop", scale=1)
                 
             with gr.Column(scale=2):
-                gr.Markdown("### 📺 Трансляция (Live HUD)")
+                gr.Markdown("### Видеопоток")
                 # output_image будет обновляться кадр за кадром (Стриминг)
                 output_image = gr.Image(label="OSD Telemetry Output", streaming=True)
                 
