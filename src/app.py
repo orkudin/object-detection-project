@@ -20,7 +20,8 @@ def process_video(video_file, stream_url, webcam_enabled, model_weights, tracker
         raise gr.Error("Пожалуйста, выберите источник: Загрузите видео, вставьте RTSP или включите USB-камеру!")
         
     config_overrides = {
-        "weights": model_weights,
+        # Принудительно направляем путь в папку models/
+        "weights": os.path.join(os.path.dirname(os.path.dirname(__file__)), "models", model_weights),
         "tracker": tracker,
         "conf": float(conf_thresh),
         "grid_step": int(grid_step)
@@ -30,6 +31,15 @@ def process_video(video_file, stream_url, webcam_enabled, model_weights, tracker
     for frame in run_pipeline_yield(video_source, config_overrides):
         yield frame
 
+
+def get_available_models():
+    """Сканирует папку models/ на наличие поддерживаемых весов"""
+    # Путь к папке от корня проекта
+    models_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "models")
+    os.makedirs(models_dir, exist_ok=True)
+    supported_ext = ('.pt', '.onnx', '.rknn', '.engine')
+    models = [f for f in os.listdir(models_dir) if f.endswith(supported_ext)]
+    return sorted(models) if models else ["Модели не найдены. Поместите их в папку models/"]
 
 def create_ui():
     theme = gr.themes.Soft(
@@ -58,10 +68,11 @@ def create_ui():
                 with gr.Tab("📷 USB Камера"):
                     webcam_cb = gr.Checkbox(label="Использовать системную веб-камеру (Устройство 0)")
                 
+                available_models = get_available_models()
                 model_dd = gr.Dropdown(
-                    choices=["yolo11n.pt", "yolo11s.pt", "mnv4_yolo11s.pt"], 
-                    value="yolo11n.pt", 
-                    label="🧠 Модель Детектора"
+                    choices=available_models, 
+                    value=available_models[0] if available_models else None,
+                    label="🧠 Модель Детектора (PyTorch/ONNX/RKNN)"
                 )
                 
                 tracker_dd = gr.Dropdown(

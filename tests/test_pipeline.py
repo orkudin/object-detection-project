@@ -66,7 +66,7 @@ class TestUAVPipeline(unittest.TestCase):
 
     def test_tracking_stability_and_edge_cases(self):
         """Тест 3: Краевые случаи детектора (Битое/Пустое видео)"""
-        from src.detection.detector import UAVDetector
+        from src.detection.factory import build_detector
         
         det_config = {
             "model_type": "yolo11",
@@ -77,7 +77,7 @@ class TestUAVPipeline(unittest.TestCase):
         
         try:
             # Детектор не должен падать с OOM при инициализации
-            detector = UAVDetector(det_config, self.logger)
+            detector = build_detector(det_config, self.logger)
             
             # Симулируем пустой черный (битый) кадр
             empty_frame = np.zeros((1080, 1920, 3), dtype=np.uint8)

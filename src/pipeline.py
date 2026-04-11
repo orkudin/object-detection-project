@@ -5,7 +5,7 @@ import time
 import os
 
 from utils.logger import get_system_logger, TelemetryLogger
-from detection.detector import UAVDetector
+from detection.factory import build_detector
 from tracking.tracker import UAVTrackerConfig
 from planning.planner import UAVPlanner
 from utils.visualizer import Visualizer
@@ -36,8 +36,8 @@ def run(args):
     telemetry_path = "data/output/telemetry." + config['pipeline']['telemetry_format']
     telemetry = TelemetryLogger(telemetry_path)
     
-    # Инициализация модулей (Zero Hardcode)
-    detector = UAVDetector(config['detector'], sys_logger)
+    # Инициализация модулей через Фабрики (Zero Hardcode & SOLID)
+    detector = build_detector(config['detector'], sys_logger)
     tracker_cfg = UAVTrackerConfig(config['tracker'], sys_logger)
     planner = UAVPlanner(config['planner'], sys_logger)
     visualizer = Visualizer(sys_logger)
@@ -68,20 +68,10 @@ def run(args):
             
         start_time = time.time()
         
-        # 1. Детекция и Трекинг
-        results = detector.track_frame(frame, tracker_cfg.get_config_path())
+        # 1. Детекция и Трекинг (Изолировано через абстрактный интерфейс list[dict])
+        tracks_data = detector.track_frame(frame, tracker_cfg.get_config_path())
         
-        # 2. Формирование списка треков для телеметрии и фильтрация
-        tracks_data = []
-        if results and len(results) > 0 and results[0].boxes.id is not None:
-            boxes = results[0].boxes.xywh.cpu().numpy()
-            ids = results[0].boxes.id.int().cpu().numpy()
-            cls = results[0].boxes.cls.int().cpu().numpy()
-            for b, t_id, c_id in zip(boxes, ids, cls):
-                if detector.classes is None or int(c_id) in detector.classes:
-                    tracks_data.append({"track_id": int(t_id), "class_id": int(c_id), "bbox": b.tolist()})
-                
-        # 3. Навигатор: Планирование маршрута (Адаптивное обновление)
+        # 2. Навигатор: Планирование маршрута (Адаптивное обновление)
         planner.update_state(tracks_data, width, height)
         current_wp = planner.get_current_waypoint()
         next_wp = planner.get_next_waypoint()
@@ -139,9 +129,8 @@ def run_pipeline_yield(video_source, config_overrides=None):
     sys_logger = get_system_logger()
     sys_logger.info(f"Запуск Web UI конвейера. Источник: {video_source}")
     
-    # Чтобы избежать OOM при переключении моделей веб-интерфейсом, 
-    # мы всегда создаем новые инстансы
-    detector = UAVDetector(config['detector'], sys_logger)
+    # Инициализация через Фабрику (чтобы избежать OOM при переключении моделей веб-интерфейсом)
+    detector = build_detector(config['detector'], sys_logger)
     tracker_cfg = UAVTrackerConfig(config['tracker'], sys_logger)
     planner = UAVPlanner(config['planner'], sys_logger)
     visualizer = Visualizer(sys_logger)
@@ -165,16 +154,8 @@ def run_pipeline_yield(video_source, config_overrides=None):
             break
             
         start_time = time.time()
-        results = detector.track_frame(frame, tracker_cfg.get_config_path())
-        
-        tracks_data = []
-        if results and len(results) > 0 and results[0].boxes.id is not None:
-            boxes = results[0].boxes.xywh.cpu().numpy()
-            ids = results[0].boxes.id.int().cpu().numpy()
-            cls = results[0].boxes.cls.int().cpu().numpy()
-            for b, t_id, c_id in zip(boxes, ids, cls):
-                if detector.classes is None or int(c_id) in detector.classes:
-                    tracks_data.append({"track_id": int(t_id), "class_id": int(c_id), "bbox": b.tolist()})
+        # Архитектурно-независимая обработка кадра
+        tracks_data = detector.track_frame(frame, tracker_cfg.get_config_path())
                     
         planner.update_state(tracks_data, width, height)
         process_fps = 1.0 / (time.time() - start_time + 1e-6)
