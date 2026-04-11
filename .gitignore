@@ -1,0 +1,37 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+
+# Deep Learning weights and artifacts
+*.pt
+*.pth
+*.onnx
+*.engine
+*.tflite
+runs/
+wandb/
+
+# Data (Ignore all content in data/ except specific scripts or explicitly added files)
+data/*
+!data/download_test_video.py
+!data/test_runway.mp4
+!data/README.md
+
+# Logs & Telemetry Metrics
+*.log
+*.jsonl
+*.csv
+output/*
+!output/.keep
+
+# IDEs
+.idea/
+.vscode/
+*.swp
