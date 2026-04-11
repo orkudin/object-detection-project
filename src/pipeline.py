@@ -91,14 +91,15 @@ def run(args):
         out.write(disp_frame)
         
         # Вывод на экран в реальном времени (если запущен локально)
-        try:
-            cv2.imshow("UAV-CV Navigator [Live]", disp_frame)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                sys_logger.info("Вызвано ручное прерывание сеанса (q). Остановка конвейера.")
-                break
-        except cv2.error:
-            # Игнорируем ошибку отрисовки (полезно для headless-серверов и Google Colab)
-            pass
+        if not args.headless:
+            try:
+                cv2.imshow("UAV-CV Navigator [Live]", disp_frame)
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    sys_logger.info("Вызвано ручное прерывание сеанса (q). Остановка конвейера.")
+                    break
+            except Exception:
+                # Игнорируем ошибку отрисовки
+                pass
         
         frame_id += 1
         # Имитация продвижения БПЛА по маршруту каждую секунду
@@ -109,7 +110,8 @@ def run(args):
     tracker_cfg.cleanup()
     cap.release()
     out.release()
-    cv2.destroyAllWindows()
+    if not args.headless:
+        cv2.destroyAllWindows()
     sys_logger.info(f"Обработка успешно завершена. Результат сохранен в {args.output_video}")
     sys_logger.info(f"Телеметрия записана в {telemetry_path}")
 
@@ -121,6 +123,7 @@ if __name__ == "__main__":
     parser.add_argument("--output_video", type=str, default="data/output/result.mp4", help="Путь сохранения результата")
     parser.add_argument("--mode", type=str, default="full", help="Режим (full)")
     parser.add_argument("--tracker", type=str, default=None, choices=["bytetrack", "botsort"], help="Переопределить алгоритм трекера (по умолчанию из конфига)")
+    parser.add_argument("--headless", action="store_true", help="Обязательно для серверов/Colab: отключить показ окон")
     
     args = parser.parse_args()
     run(args)
