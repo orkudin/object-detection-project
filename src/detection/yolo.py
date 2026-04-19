@@ -23,7 +23,18 @@ class YOLODetector(BaseDetector):
         
     def track_frame(self, frame, tracker_yaml_path: str) -> list[dict]:
         """
-        Возвращает стандартизированный список [ {track_id, class_id, bbox} ].
+        Выполняет инференс на одном кадре для обнаружения и отслеживания объектов.
+        
+        Реализация абстрактного метода для детекторов на базе архитектуры YOLO
+        (через библиотеку ultralytics).
+        
+        Args:
+            frame (numpy.ndarray): Кадр видеопотока в формате BGR.
+            tracker_yaml_path (str): Путь к файлу конфигурации системы мультитрекинга.
+        
+        Returns:
+            list[dict]: Стандартизированный список обнаруженных объектов. 
+                Формат: `{"track_id": int, "class_id": int, "bbox": [x_center, y_center, width, height]}`.
         """
         try:
             results = self.model.track(
@@ -32,6 +43,7 @@ class YOLODetector(BaseDetector):
                 tracker=tracker_yaml_path,
                 conf=self.conf_thresh,
                 iou=self.iou_thresh,
+                classes=self.classes, # ОПТИМИЗАЦИЯ: передаем классы сразу в трекер (ускоряет инференс)
                 verbose=False
             )
             
@@ -58,3 +70,7 @@ class YOLODetector(BaseDetector):
         except Exception as e:
             self.logger.error(f"Ошибка при обработке кадра YOLODetector: {e}")
             return []
+
+    @property
+    def class_names(self) -> dict:
+        return self.model.names if hasattr(self.model, 'names') else {}

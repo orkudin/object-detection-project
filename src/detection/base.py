@@ -9,12 +9,22 @@ class BaseDetector(ABC):
     @abstractmethod
     def track_frame(self, frame, tracker_yaml_path: str) -> list[dict]:
         """
-        Принимает:
-        - frame: BGR numpy изображение
-        - tracker_yaml_path: Путь к конфигурации трекера
+        Выполняет инференс на одном кадре для обнаружения и отслеживания локализованных объектов.
         
-        Возвращает:
-        Список словарей формата `[{"track_id": 1, "class_id": 2, "bbox": [x, y, w, h]}, ...]`
-        Это полностью изолирует конвейер от внутренних объектов библиотек.
+        Абстрактный метод, обязывающий все конкретные классы детекторов (YOLO, RKNN, и др.)
+        реализовывать единый интерфейс взаимодействия для соблюдения принципов SOLID (DIP).
+        
+        Args:
+            frame (numpy.ndarray): Кадр видеопотока в формате BGR.
+            tracker_yaml_path (str): Путь к файлу конфигурации системы мультитрекинга.
+        
+        Returns:
+            list[dict]: Стандартизированный список обнаруженных объектов. 
+                Формат: `{"track_id": int, "class_id": int, "bbox": [x_center, y_center, width, height]}`.
         """
         pass
+
+    @property
+    def class_names(self) -> dict:
+        """Возвращает словарь классов (ID -> Название), если поддерживается моделью."""
+        return {}

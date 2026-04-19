@@ -1,6 +1,7 @@
 import os
 import sys
 import gradio as gr
+import yaml
 
 # Обеспечиваем корректные импорты при запуске из корня проекта
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -8,7 +9,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from pipeline import run_pipeline_yield
 
 # Функция-обертка для запуска конвейера из Gradio
-def process_video(video_file, stream_url, webcam_enabled, model_weights, tracker, conf_thresh, grid_step):
+def process_video(video_file, stream_url, webcam_enabled, model_weights, tracker, conf_thresh, grid_step, show_osd, show_target_wp):
     # Определение источника (Веб-камера -> Файл -> RTSP)
     if webcam_enabled:
         video_source = 0
@@ -24,7 +25,9 @@ def process_video(video_file, stream_url, webcam_enabled, model_weights, tracker
         "weights": os.path.join(os.path.dirname(os.path.dirname(__file__)), "models", model_weights),
         "tracker": tracker,
         "conf": float(conf_thresh),
-        "grid_step": int(grid_step)
+        "grid_step": int(grid_step),
+        "show_osd": show_osd,
+        "show_target_wp": show_target_wp
     }
     
     # Генератор кадров `yield` для плавной Web-операнды
@@ -42,6 +45,18 @@ def get_available_models():
     return sorted(models) if models else ["Модели не найдены. Поместите их в папку models/"]
 
 def create_ui():
+    cfg_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'configs', 'default.yaml')
+    with open(cfg_path, 'r') as f:
+        default_config = yaml.safe_load(f)
+        
+    conf_def = default_config.get('detector', {}).get('confidence_threshold', 0.35)
+    grid_def = default_config.get('planner', {}).get('grid_step_meters', 10)
+    osd_def = default_config.get('ui', {}).get('show_osd_default', True)
+    twp_def = default_config.get('ui', {}).get('show_target_wp_default', True)
+    tracker_def = default_config.get('tracker', {}).get('algorithm', 'bytetrack')
+    server_port = default_config.get('ui', {}).get('server_port', 7860)
+    share_flag = default_config.get('ui', {}).get('share', False)
+
     theme = gr.themes.Soft(
         primary_hue="indigo", 
         secondary_hue="blue",
@@ -77,12 +92,14 @@ def create_ui():
                 
                 tracker_dd = gr.Dropdown(
                     choices=["bytetrack", "botsort"], 
-                    value="bytetrack", 
+                    value=tracker_def, 
                     label="Алгоритм трекинга"
                 )
                 
-                conf_slider = gr.Slider(minimum=0.1, maximum=0.9, value=0.35, step=0.05, label="Порог уверенности (Confidence)")
-                grid_slider = gr.Slider(minimum=5, maximum=50, value=10, step=1, label="Шаг сетки навигатора, м")
+                conf_slider = gr.Slider(minimum=0.1, maximum=0.9, value=conf_def, step=0.05, label="Порог уверенности (Confidence)")
+                grid_slider = gr.Slider(minimum=5, maximum=50, value=grid_def, step=1, label="Шаг сетки навигатора, м")
+                osd_cb = gr.Checkbox(label="Показывать OSD телеметрию на видео", value=osd_def)
+                target_wp_cb = gr.Checkbox(label="Показывать прицел Target WP", value=twp_def)
                 
                 with gr.Row():
                     run_btn = gr.Button("Запуск", variant="primary", scale=2)
@@ -96,16 +113,16 @@ def create_ui():
         # Привязка функции к кнопке (Generator Mode)
         run_event = run_btn.click(
             fn=process_video,
-            inputs=[video_input, stream_input, webcam_cb, model_dd, tracker_dd, conf_slider, grid_slider],
+            inputs=[video_input, stream_input, webcam_cb, model_dd, tracker_dd, conf_slider, grid_slider, osd_cb, target_wp_cb],
             outputs=[output_image]
         )
         
         # Кнопка остановки перехватывает и отменяет генератор событий
         stop_btn.click(fn=None, inputs=None, outputs=None, cancels=[run_event])
 
-    return app
+    return app, server_port, share_flag
 
 if __name__ == "__main__":
-    ui = create_ui()
-    # Запускаем локальный веб-сервер (по умолчанию 127.0.0.1, что избегает ошибки ERR_ADDRESS_INVALID в Windows)
-    ui.launch(server_port=7860, share=False)
+    ui, server_port, share_flag = create_ui()
+    # Запускаем локальный веб-сервер (настройки порта и доступа берутся из default.yaml)
+    ui.launch(server_port=server_port, share=share_flag)
