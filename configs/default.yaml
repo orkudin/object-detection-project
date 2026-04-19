@@ -31,7 +31,7 @@ detector:
   # Пример установки на весь экран (отключение фильтрации): [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]]
   runway_roi: [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]] 
 tracker:
-  algorithm: "bytetrack"
+  algorithm: "botsort"
   track_high_thresh: 0.5
   track_low_thresh: 0.1
   new_track_thresh: 0.6

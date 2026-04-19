@@ -41,7 +41,7 @@ wandb/
 
 # ── Данные ───────────────────────────────────────────────────
 # Игнорируем всё в data/, кроме скриптов загрузки и README
-data/*
+# data/*
 !data/download_test_video.py
 !data/README.md
 
