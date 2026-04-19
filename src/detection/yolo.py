@@ -8,10 +8,16 @@ class YOLODetector(BaseDetector):
     Стандартный детектор на базе PyTorch / Ultralytics (для ПК: CPU/GPU).
     """
     def __init__(self, config, logger):
+        import os
         self.logger = logger
         self.device = config.get("device", "cpu")
         weights = config.get("weights_path", "yolo11s.pt")
         
+        # Системная защита: если передано просто имя файла, всегда направляем его в папку models/
+        if not os.path.isabs(weights) and not os.path.dirname(weights):
+            project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            weights = os.path.join(project_root, "models", weights)
+            
         self.logger.info(f"YOLO Detector init: weights={weights}, device={self.device}")
         # Явное указание task='detect' спасает от сбоев парсинга масок (Segmentation) 
         # при работе с кастомными ONNX графами

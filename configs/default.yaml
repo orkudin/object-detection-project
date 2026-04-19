@@ -9,13 +9,13 @@ pipeline:
 ui:
   server_port: 7860
   share: false
-  show_osd_default: true
-  show_target_wp_default: true
+  show_osd_default: false
+  show_target_wp_default: false
 
 
 detector:
-  model_type: "yolo11"    
-  weights_path: "yolo11s.pt" # Авто-скачается из интернета у проверяющего
+  model_type: "Efficient-YOLO-RS-Airplane-Detection-YOLOv8s"    
+  weights_path: "Efficient-YOLO-RS-Airplane-Detection-YOLOv8s.pt" # Авто-скачается из интернета у проверяющего
   device: "cuda:0"        
   confidence_threshold: 0.35
   iou_threshold: 0.45
